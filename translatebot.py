@@ -40,8 +40,8 @@ import datetime
 # - quick successive message cause index error. need to find a way to parse out the ircdata
 
 class APIROUTES:
-	lang_detect = 'https://translate.yandex.net/api/v1.5/tr.json/detect?key={key}'
-	translate = 'https://translate.yandex.net/api/v1.5/tr.json/translate?key={key}&text={input}&lang={direction}'
+	detect = 'https://translate.yandex.net/api/v1.5/tr.json/detect?key={key}&text={input}'
+	translate = 'https://translate.yandex.net/api/v1.5/tr.json/translate?key={key}&text={input}&lang={target}'
 
 # ====== READ CONFIG ======
 Config = ConfigParser.ConfigParser()
@@ -71,6 +71,12 @@ port = int(ConfigSectionMap('settings')['port'])
 password = ConfigSectionMap('settings')['oauth']
 api_key = ConfigSectionMap('settings')['api']
 
+# Translation Bot Default Settings
+targetLanguage = 'ja'
+filterLanguage = 'en'
+broadcast = 0 # 1 for ON | 0 for OFF
+
+
 
 # ====== IRC FUNCTIONS ======
 # Extract Nickname
@@ -93,8 +99,18 @@ def getMessage(data):
 	else:
 		return 'Not a message'
 
+def detectLanguage(data):
+	tempDict = requests.get(APIROUTES.detect.format(key=api_key, input=data)).json()
+	try:
+		language = tempDict['lang']
+		return str(language)
+	except KeyError:
+		print 'Fails gracefully, problem with detection'
+		return 'Nothing'
+
+
 def translateMessage(data):
-	tempDict = requests.get(APIROUTES.translate.format(key=api_key, input=inputText, direction='zh')).json()
+	tempDict = requests.get(APIROUTES.translate.format(key=api_key, input=data, target=str(targetLanguage))).json()
 	try:
 		translatedText = tempDict['text'][0]
 		return translatedText
@@ -105,7 +121,8 @@ def translateMessage(data):
 # ====== TIMER FUNCTIONS ======
 
 def printit():  
-	threading.Timer(60.0, printit).start()
+	threading.Timer(25.0, printit).start()
+
 	print 'Keep Alive'
 
 # ===============================
@@ -124,10 +141,16 @@ irc.send('JOIN ' + channel + '\r\n')
 
 printit()
 
+irc.send('PRIVMSG ' + channel + ' :/me has entered the channel.\r\n')
+
+# translation_bot has entered the channel. Settings
+# [ Target Language: jp | Filter Language: None | Broadcast: ON | !botcommands  | !about ]
+
+
 # Main Program Loop
 while True:
-
-	ircdata = irc.recv(1024) # gets output from IRC server
+	
+	ircdata = irc.recv(4096) # gets output from IRC server
 	ircuser = ircdata.split(':')[1]
 	ircuser = ircuser.split('!')[0] # determines the sender of the messages
 
@@ -141,38 +164,49 @@ while True:
 	print '\n'
 	print '======================='
 
-	inputText = message
-	if inputText == 'Not a message' or inputText == 'No message' or inputText == 'Index Error':
-		pass
-	else:
-		irc.send('PRIVMSG ' + channel + ' :/me : ' + user + ' said - [' + translateMessage(str(inputText)) + '] ' + '\r\n')
 
 	# About
 	if ircdata.find(':!about') != -1:
-		irc.send('PRIVMSG ' + channel + ' :' + about(getNick(ircdata)) + '\r\n')
-
+		irc.send('PRIVMSG ' + channel + ' :Salutations! I am a translation chat bot written by darkandark. I provide instant chat translation from any language to a desired target language. Type !botcommands to interact with me.\r\n')
+	
 	# Commands
-	if ircdata.find(':!commands') != -1:
-		irc.send('PRIVMSG ' + channel + ' :' + getCommands() + '\r\n')
+	if ircdata.find(':!why') != -1:
+		irc.send('PRIVMSG ' + channel + ' :Twitch Chat is a wonderful platform to connect gamers and build communities. Many streamers have a dual language audience. Having a translation bot in your channel may help viewers of different languages interact, increasing the quality of your chat for your viewers.\r\n')
 
 	# Last
 	if ircdata.find(':!last') != -1:
 		irc.send('PRIVMSG ' + channel + ' :' + getLast() + '\r\n')
 
+	# Last
+	if ircdata.find(':!broadcast') != -1:
+		tempMsg = message.strip('!broadcast')
+		tempMsg = tempMsg.split()[0]
+		if tempMsg.lower() == 'on':
+			broadcast = 1;
+		elif tempMsg.lower() == 'off':
+			broadcast = 0;
+		else:
+			pass
+			
+
 	# Current Runes
-	if ircdata.find(':!runes') != -1 or ircdata.find(':!rune') != -1:
+	if ircdata.find(':!settings') != -1 or ircdata.find(':!setting') != -1:
 		irc.send('PRIVMSG ' + channel + ' :' + getCurrent('runes') + '\r\n')
 
 	# Current Mastery
-	if ircdata.find(':!mastery') != -1 or ircdata.find(':!masteries') != -1:
+	if ircdata.find(':!botcommands') != -1 or ircdata.find(':!botcommand') != -1:
 		irc.send('PRIVMSG ' + channel + ' :' + getCurrent('masteries') + '\r\n')
-
-	# Basic Summoner Data
-	if ircdata.find(':!summoner') != -1:
-		irc.send('PRIVMSG ' + channel + ' :' + getSummonerInfo() + '\r\n')
 
 	# Keep Alive
 	if ircdata.find('PING') != -1:
 		irc.send('PONG ' + ircdata.split()[1] + '\r\n')
 
-
+	inputText = message
+	if inputText == 'Not a message' or inputText == 'No message' or inputText == 'Index Error' or inputText[0] == '!':
+		pass
+	elif detectLanguage(str(inputText)) == str(filterLanguage) and broadcast == 1:
+		print 'IS IT PICKING UP THAT IT IS ENGLIHS?'
+		irc.send('PRIVMSG ' + channel + ' :/me : ' + user + ' said - [' + translateMessage(str(inputText)) + '] ' + '\r\n')
+	else:
+		print filterLanguage + ' not found.'
+		pass
