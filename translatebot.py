@@ -32,7 +32,6 @@ class APIROUTES:
 	google_translate = 'https://www.googleapis.com/language/translate/v2?key={key}&q={input}&source={source}&target={target}'
 	#google_auto_translate = 'https://www.googleapis.com/language/translate/v2?key={key}&q={input}&target={target}'
 
-
 # ====== READ CONFIG ======
 Config = ConfigParser.ConfigParser()
 Config.read(os.path.dirname(os.path.abspath(__file__)) + '/config.ini')
@@ -68,7 +67,7 @@ targetLanguage = 'ja' # translating TO
 sourceLanguage = 'en' # translating FROM
 duplex = 0 # 1 for ON | 0 for OFF
 broadcast = 1 # 1 for ON | 0 for OFF
-translateAPI = 'yandex' # google | yandex
+translateAPI = 'google' # google | yandex
 
 # ====== IRC FUNCTIONS ======
 # Extract Nickname
@@ -182,10 +181,6 @@ currentSettings = 'Current Settings: [' + sourceLanguage.upper() + '<->' + targe
 			+'] [Duplex ' + str(duplex) + ']'   
 irc.send('PRIVMSG ' + channel + ' :/me has entered the channel. ' + currentSettings + ' \r\n')
 
-# translation_bot has entered the channel. Settings
-# [ Target Language: jp | Filter Language: None | Broadcast: ON | !botcommands  | !about ]
-
-
 # Main Program Loop
 while True:
 	
@@ -253,18 +248,6 @@ while True:
 			+'] [Using ' + translateAPI.title() + ' Translate API] [Broadcast ' + str(broadcast)\
 			+'] [Duplex ' + str(duplex) + ']'   
 		irc.send('PRIVMSG ' + channel + ' :' + currentSettings + '\r\n')
-		
-
-		# Translation Bot Default Settings
-# targetLanguage = 'ja' # translating TO
-# sourceLanguage = 'en' # translating FROM
-# duplex = 0 # 1 for ON | 0 for OFF
-# broadcast = 1 # 1 for ON | 0 for OFF
-# translateAPI = 'google' # google | yandex
-
-	# Current Mastery
-	#if ircdata.find(':!botcommands') != -1 or ircdata.find(':!botcommand') != -1:
-		#irc.send('PRIVMSG ' + channel + ' :' + getCurrent('masteries') + '\r\n')
 
 	# Keep Alive
 	if ircdata.find('PING') != -1:
